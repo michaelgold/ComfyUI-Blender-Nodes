@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
-
-import bpy
+import subprocess
+import sys
 
 
 class BlenderFBXToGLB:
@@ -27,25 +27,26 @@ class BlenderFBXToGLB:
             raise ValueError(f"Input file must be an FBX: {source_path}")
 
         output_path = source_path.with_suffix(".glb")
+        worker_path = Path(__file__).with_name("blender_worker.py").resolve()
 
-        bpy.ops.wm.read_factory_settings(use_empty=True)
-
-        import_result = bpy.ops.import_scene.fbx(filepath=str(source_path))
-        if "FINISHED" not in import_result:
-            raise RuntimeError(f"Failed to import FBX: {source_path}")
-
-        pack_result = bpy.ops.file.pack_all()
-        if "FINISHED" not in pack_result:
-            raise RuntimeError("Failed to pack resources into Blender data")
-
-        export_result = bpy.ops.export_scene.gltf(
-            filepath=str(output_path),
-            export_format="GLB",
-            export_image_format="AUTO",
-            check_existing=False,
+        # Run bpy work in an isolated interpreter so Blender crashes do not terminate ComfyUI.
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(worker_path),
+                "fbx-to-glb",
+                str(source_path),
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
         )
-        if "FINISHED" not in export_result:
-            raise RuntimeError(f"Failed to export GLB: {output_path}")
+        if process.returncode != 0:
+            error_details = (process.stderr or process.stdout or "Unknown error").strip()
+            raise RuntimeError(
+                "Failed to convert FBX to GLB in isolated bpy process "
+                f"(exit code {process.returncode}): {error_details}"
+            )
 
         return (str(output_path),)
 
