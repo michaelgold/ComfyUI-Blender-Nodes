@@ -1,7 +1,7 @@
 [project]
 name = "blender-nodes"
 description = "Blender Actions in Comfy using native BPY"
-version = "0.1.1"
+version = "0.1.2"
 license = {file = "LICENSE"}
 dependencies = ["bpy"]
 
