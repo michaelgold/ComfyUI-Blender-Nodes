@@ -30,6 +30,8 @@ class BlenderFBXToGLB:
         worker_path = Path(__file__).with_name("blender_worker.py").resolve()
 
         # Run bpy work in an isolated interpreter so Blender crashes do not terminate ComfyUI.
+        worker_env = os.environ.copy()
+        worker_env.pop("LD_PRELOAD", None)
         process = subprocess.run(
             [
                 sys.executable,
@@ -40,6 +42,7 @@ class BlenderFBXToGLB:
             ],
             capture_output=True,
             text=True,
+            env=worker_env,
         )
         if process.returncode != 0:
             error_details = (process.stderr or process.stdout or "Unknown error").strip()
